@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">app Note</string>
+    <string name="my_notes">My Notes</string>
+    <string name="search_notes">Search Notes</string>
+    <string name="title_activity_main2">MainActivity2</string>
+    <string name="note_title">Note title</string>
+    <string name="note_subtitle">Note Subtitle</string>
+    <string name="type_note_here">Type note here...</string>
+</resources>

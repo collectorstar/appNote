@@ -14,28 +14,33 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.appnote.R;
 import com.example.appnote.entities.Note;
+import com.example.appnote.listeners.NotesListener;
 import com.makeramen.roundedimageview.RoundedImageView;
 
 import java.util.List;
 
 public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHolder> {
-private List<Note> notes;
+    private List<Note> notes;
 
-    public NotesAdapter(List<Note> notes) {
+    private NotesListener notesListener;
+
+    public NotesAdapter(List<Note> notes, NotesListener notesListener) {
         this.notes = notes;
+        this.notesListener = notesListener;
     }
 
     @NonNull
     @Override
     public NoteViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         return new NoteViewHolder(
-                LayoutInflater.from(parent.getContext()).inflate(R.layout.item_container_note,parent,false)
+                LayoutInflater.from(parent.getContext()).inflate(R.layout.item_container_note, parent, false)
         );
     }
 
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
         holder.setNote(notes.get(position));
+        holder.layoutNote.setOnClickListener(view -> notesListener.onNoteClicked(notes.get(position), position));
     }
 
     @Override
@@ -73,16 +78,16 @@ private List<Note> notes;
             textDateTime.setText(note.getDatetime());
 
             GradientDrawable gradientDrawable = (GradientDrawable) layoutNote.getBackground();
-            if(note.getColor() != null){
+            if (note.getColor() != null) {
                 gradientDrawable.setColor(Color.parseColor(note.getColor()));
-            }else {
+            } else {
                 gradientDrawable.setColor(Color.parseColor("#333333"));
             }
 
-            if(note.getImagePath() != null){
+            if (note.getImagePath() != null) {
                 imageNote.setImageBitmap(BitmapFactory.decodeFile(note.getImagePath()));
                 imageNote.setVisibility(View.VISIBLE);
-            }else {
+            } else {
                 imageNote.setVisibility(View.GONE);
             }
         }

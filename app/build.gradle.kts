@@ -75,6 +75,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.5.0"))
     implementation("com.google.firebase:firebase-analytics-ktx")
 
+    //fireabase database
+    implementation("com.google.firebase:firebase-database:20.3.0")
 
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.4.0")
 

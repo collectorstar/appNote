@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         startActivityForResult(intent, REQUEST_CODE_UPDATE_NOTE);
     }
 
-    private void getNotes(final int requestCode, final boolean isNoteDeleted) {
+    private void getNotes(final int requestCode, boolean isNoteDeleted) {
 
         @SuppressLint("StaticFieldLeak")
         class GetNotesTask extends AsyncTask<Void, Void, List<Note>> {
@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                     notesAdapter.notifyDataSetChanged();
                 } else if (requestCode == REQUEST_CODE_ADD_NOTE) {
                     noteList.add(0, notes.get(0));
-                    notesAdapter.notifyItemChanged(0);
+                    notesAdapter.notifyItemInserted(0);
                     notesRecyclerView.smoothScrollToPosition(0);
                 } else if (requestCode == REQUEST_CODE_UPDATE_NOTE) {
                     noteList.remove(noteClickedPosition);
@@ -130,7 +130,8 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
             getNotes(REQUEST_CODE_ADD_NOTE, false);
         } else if (requestCode == REQUEST_CODE_UPDATE_NOTE && resultCode == RESULT_OK) {
             if (data != null) {
-                getNotes(REQUEST_CODE_UPDATE_NOTE, data.getBooleanExtra("isNoteDeteted", false));
+                boolean isNoteDeleted = data.getBooleanExtra("isNoteDeleted",false);
+                getNotes(REQUEST_CODE_UPDATE_NOTE, isNoteDeleted);
             }
         }
     }

@@ -105,6 +105,20 @@ public class CreateNoteActivity extends AppCompatActivity {
             selectedImagePath = "";
         });
 
+        if(getIntent().getBooleanExtra("isFromQuickActions",false)){
+            String type = getIntent().getStringExtra("quickActionType");
+            if(type != null){
+                if(type.equals("image")){
+                    selectedImagePath = getIntent().getStringExtra("imagePath");
+                    imageNote.setImageBitmap(BitmapFactory.decodeFile(selectedImagePath));
+                    imageNote.setVisibility(View.VISIBLE);
+                    findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
+                }else if(type.equals("URL")){
+                    textWebURL.setText(getIntent().getStringExtra("URL"));
+                    layoutWebURL.setVisibility(View.VISIBLE);
+                }
+            }
+        }
 
         initMiscellaneous();
         setSubtitleIndicatorColor();
@@ -261,17 +275,13 @@ public class CreateNoteActivity extends AppCompatActivity {
         layoutMiscellaneous.findViewById(R.id.layoutAddImage).setOnClickListener(view -> {
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
 
-
             if (Build.VERSION.SDK_INT < 33) {
                 if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-
                     ActivityCompat.requestPermissions(
                             CreateNoteActivity.this,
                             new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                             REQUEST_CODE_STORAGE_PERMISSION
                     );
-
-
                 } else {
                     selectImage();
                 }

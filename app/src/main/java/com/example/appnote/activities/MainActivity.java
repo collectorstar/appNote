@@ -2,6 +2,10 @@ package com.example.appnote.activities;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
@@ -14,12 +18,15 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import com.example.appnote.R;
+import com.example.appnote.adapters.NavAdapter;
 import com.example.appnote.adapters.NotesAdapter;
 import com.example.appnote.database.NotesDatabase;
 import com.example.appnote.entities.Note;
 import com.example.appnote.listeners.NotesListener;
+import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,15 +36,22 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     public static final int REQUEST_CODE_ADD_NOTE = 1;
     public static final int REQUEST_CODE_UPDATE_NOTE = 2;
     public static final int REQUEST_CODE_SHOW_NOTES = 3;
-    private RecyclerView notesRecyclerView;
+    private RecyclerView notesRecyclerView, rc_nav;
     private List<Note> noteList;
     private NotesAdapter notesAdapter;
     private int noteClickedPosition = -1;
+
+    private Toolbar toolbar;
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
+    private NavAdapter navAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setupNav();
 
         ImageView imageAddNoteMain = findViewById(R.id.imageAddNoteMain);
         imageAddNoteMain.setOnClickListener(view -> startActivityForResult(
@@ -70,11 +84,26 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
             @Override
             public void afterTextChanged(Editable e) {
-                if(noteList.size() != 0){
+                if (noteList.size() != 0) {
                     notesAdapter.searchNotes(e.toString());
                 }
             }
         });
+    }
+
+    public void setupNav() {
+        toolbar = findViewById(R.id.toolbar);
+        drawerLayout = findViewById(R.id.drawerLayout);
+        navigationView = findViewById(R.id.navigationView);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        toolbar.setNavigationIcon(R.drawable.ic_menu);
+        toolbar.setNavigationOnClickListener(view -> drawerLayout.openDrawer(GravityCompat.START));
+
+        rc_nav = findViewById(R.id.rc_nav);
+        navAdapter = new NavAdapter(this);
+        rc_nav.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        rc_nav.setAdapter(navAdapter);
     }
 
     @Override
@@ -130,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
             getNotes(REQUEST_CODE_ADD_NOTE, false);
         } else if (requestCode == REQUEST_CODE_UPDATE_NOTE && resultCode == RESULT_OK) {
             if (data != null) {
-                boolean isNoteDeleted = data.getBooleanExtra("isNoteDeleted",false);
+                boolean isNoteDeleted = data.getBooleanExtra("isNoteDeleted", false);
                 getNotes(REQUEST_CODE_UPDATE_NOTE, isNoteDeleted);
             }
         }

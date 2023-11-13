@@ -41,6 +41,7 @@ import com.example.appnote.database.NotesDatabase;
 import com.example.appnote.entities.Note;
 import com.example.appnote.listeners.NotesListener;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,11 +65,13 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private NavigationView navigationView;
     private NavAdapter navAdapter;
 
+    private FirebaseAuth auth;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        auth = FirebaseAuth.getInstance();
         setupNav();
 
         ImageView imageAddNoteMain = findViewById(R.id.imageAddNoteMain);
@@ -154,7 +157,20 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         toolbar.setNavigationOnClickListener(view -> drawerLayout.openDrawer(GravityCompat.START));
 
         navsRecyclerView = findViewById(R.id.navsRecyclerView);
-        navAdapter = new NavAdapter(this);
+        navAdapter = new NavAdapter(this, (position, itemName) -> {
+            switch (itemName) {
+                case "Account Info":
+                    break;
+                case "Change Password":
+                    break;
+                case "Logout":
+                    auth.signOut();
+                    Intent intent = new Intent(MainActivity.this,LoginActivity.class);
+                    startActivity(intent);
+                    finish();
+                    break;
+            }
+        });
         navsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         navsRecyclerView.setAdapter(navAdapter);
     }
@@ -257,19 +273,19 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                 boolean isNoteDeleted = data.getBooleanExtra("isNoteDeleted", false);
                 getNotes(REQUEST_CODE_UPDATE_NOTE, isNoteDeleted);
             }
-        }else if(requestCode == REQUEST_CODE_SELECT_IMAGE && resultCode == RESULT_OK){
-            if(data != null){
+        } else if (requestCode == REQUEST_CODE_SELECT_IMAGE && resultCode == RESULT_OK) {
+            if (data != null) {
                 Uri selectedImageUri = data.getData();
-                if(selectedImageUri != null){
-                    try{
+                if (selectedImageUri != null) {
+                    try {
                         String selectedImagePath = getPathFromUri(selectedImageUri);
-                        Intent intent = new Intent(getApplicationContext(),CreateNoteActivity.class);
-                        intent.putExtra("isFromQuickActions",true);
-                        intent.putExtra("quickActionType","image");
-                        intent.putExtra("imagePath",selectedImagePath);
-                        startActivityForResult(intent,REQUEST_CODE_ADD_NOTE);
-                    }catch (Exception ex){
-                        Toast.makeText(this,ex.getMessage(),Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(getApplicationContext(), CreateNoteActivity.class);
+                        intent.putExtra("isFromQuickActions", true);
+                        intent.putExtra("quickActionType", "image");
+                        intent.putExtra("imagePath", selectedImagePath);
+                        startActivityForResult(intent, REQUEST_CODE_ADD_NOTE);
+                    } catch (Exception ex) {
+                        Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -303,11 +319,11 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                     dialogAddURL.dismiss();
                     dialogAddURL = null;
 
-                    Intent intent = new Intent(getApplicationContext(),CreateNoteActivity.class);
-                    intent.putExtra("isFromQuickActions",true);
-                    intent.putExtra("quickActionType","URL");
-                    intent.putExtra("URL",inputURL.getText().toString());
-                    startActivityForResult(intent,REQUEST_CODE_ADD_NOTE);
+                    Intent intent = new Intent(getApplicationContext(), CreateNoteActivity.class);
+                    intent.putExtra("isFromQuickActions", true);
+                    intent.putExtra("quickActionType", "URL");
+                    intent.putExtra("URL", inputURL.getText().toString());
+                    startActivityForResult(intent, REQUEST_CODE_ADD_NOTE);
                 }
             });
 

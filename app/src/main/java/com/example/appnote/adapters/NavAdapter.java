@@ -1,6 +1,7 @@
 package com.example.appnote.adapters;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +14,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.appnote.R;
+import com.example.appnote.activities.LoginActivity;
+import com.example.appnote.activities.MainActivity;
 import com.example.appnote.entities.Nav;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,21 +26,24 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.NavViewHolder> {
 
     private List<Nav> list;
     private Context context;
+    private MyClickListener myClickListener;
 
-    public NavAdapter(Context context) {
+    public NavAdapter(Context context,MyClickListener myClickListener) {
         this.context = context;
         //nav items
         this.list = new ArrayList<>();
         this.list.add(new Nav("Account Info"));
         this.list.add(new Nav("Change Password"));
         this.list.add(new Nav("Logout"));
+
+        this.myClickListener = myClickListener;
     }
 
     @NonNull
     @Override
     public NavViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         return new NavViewHolder(
-                LayoutInflater.from(parent.getContext()).inflate(R.layout.item_container_nav,parent,false)
+                LayoutInflater.from(parent.getContext()).inflate(R.layout.item_container_nav, parent, false)
         );
     }
 
@@ -50,7 +57,7 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.NavViewHolder> {
         return list.size();
     }
 
-    static class NavViewHolder extends RecyclerView.ViewHolder {
+    public class NavViewHolder extends RecyclerView.ViewHolder {
         LinearLayout layoutNav;
         ImageView ivIcon;
         TextView tvName;
@@ -60,6 +67,7 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.NavViewHolder> {
             ivIcon = itemView.findViewById(R.id.ivIcon);
             tvName = itemView.findViewById(R.id.tvName);
             layoutNav = itemView.findViewById(R.id.layoutNav);
+            itemView.setOnClickListener(view -> myClickListener.onItemClick(getAdapterPosition(),tvName.getText().toString()));
         }
 
         void setNav(Nav item) {
@@ -67,17 +75,18 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.NavViewHolder> {
             switch (item.getName()) {
                 case "Account Info":
                     ivIcon.setImageResource(R.drawable.ic_info_nav);
-                    layoutNav.setOnClickListener(view -> Toast.makeText(itemView.getContext(),"vao trang info",Toast.LENGTH_SHORT).show());
                     break;
                 case "Change Password":
                     ivIcon.setImageResource(R.drawable.ic_change_circle);
-                    layoutNav.setOnClickListener(view -> Toast.makeText(itemView.getContext(),"vao trang change pass",Toast.LENGTH_SHORT).show());
                     break;
                 case "Logout":
                     ivIcon.setImageResource(R.drawable.ic_logout);
-                    layoutNav.setOnClickListener(view -> Toast.makeText(itemView.getContext(),"logout",Toast.LENGTH_SHORT).show());
                     break;
             }
         }
+    }
+
+    public interface MyClickListener{
+        void onItemClick(int position,String itemName);
     }
 }

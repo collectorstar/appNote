@@ -14,4 +14,13 @@
     <string name="cancel_dialog">CANCEL</string>
     <string name="delete_note">Delete Note</string>
     <string name="are_you_sure_you_want_to_delete_this_note">Are you sure you want to delete this note?</string>
+    <string name="email">Email</string>
+    <string name="register">REGISTER</string>
+    <string name="you_gmail_com">you@gmail.com</string>
+    <string name="password">Password</string>
+    <string name="your_password">your password</string>
+    <string name="click_to_login">Click to Login</string>
+    <string name="fogot_password">Fogot Password?</string>
+    <string name="login">Login</string>
+    <string name="click_to_register">Click to Register</string>
 </resources>

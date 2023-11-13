@@ -1,5 +1,6 @@
 package com.example.appnote.activities;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -18,6 +19,11 @@ import android.widget.Toast;
 import com.example.appnote.R;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,6 +34,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextView tvFogotPass, tvRegister;
     private Button btnLogin;
     private FirebaseAuth auth;
+    private DatabaseReference database;
 
     @Override
     public void onStart() {
@@ -67,6 +74,7 @@ public class LoginActivity extends AppCompatActivity {
         tvRegister = findViewById(R.id.tvRegister);
         btnLogin = findViewById(R.id.btnLogin);
         auth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
     }
 
     private void fogotPass() {
@@ -114,25 +122,40 @@ public class LoginActivity extends AppCompatActivity {
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
+                database.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
+                        if(snapshot.hasChild(emailKey)){
+                            auth.signInWithEmailAndPassword(email, password)
+                                    .addOnCompleteListener(task -> {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Login successful",
+                                                    Toast.LENGTH_SHORT).show();
 
-                auth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(task -> {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(getApplicationContext(), "Login successful",
-                                        Toast.LENGTH_SHORT).show();
+                                            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                                            startActivity(intent);
+                                            finish();
 
-//                                FirebaseUser user = auth.getCurrentUser();
+                                        } else {
+                                            Log.e("Login firebase error", task.getException().getMessage());
+                                            Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        }else {
+                            Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
 
-                                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                                startActivity(intent);
-                                finish();
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
 
-                            } else {
-                                Log.e("Login firebase error", task.getException().getMessage());
-                                Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
-                                        Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                    }
+                });
+
+
             }
         });
     }

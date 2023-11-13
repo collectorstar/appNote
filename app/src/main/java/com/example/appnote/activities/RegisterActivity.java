@@ -1,5 +1,6 @@
 package com.example.appnote.activities;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -14,6 +15,11 @@ import android.widget.Toast;
 
 import com.example.appnote.R;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +30,7 @@ public class RegisterActivity extends AppCompatActivity {
     private TextView tvLogin;
     private Button btnRegister;
     private FirebaseAuth auth;
+    private DatabaseReference database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,19 +48,38 @@ public class RegisterActivity extends AppCompatActivity {
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
+                database.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
+                        if(snapshot.hasChild(emailKey)){
+                            Toast.makeText(RegisterActivity.this,"Email is already registered",Toast.LENGTH_SHORT).show();
+                        }else {
+                            auth.createUserWithEmailAndPassword(email, password)
+                                    .addOnCompleteListener(task -> {
+                                        if (task.isSuccessful()) {
+
+                                            database.child(emailKey).child("email").setValue(email);
+
+                                            Toast.makeText(RegisterActivity.this, "Account Created",
+                                                    Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Log.e("register loi firebase",task.getException().getMessage());
+                                            Toast.makeText(RegisterActivity.this, "Email đã được sử dụng",
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+                });
 
 
-                auth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(task -> {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(RegisterActivity.this, "Account Created",
-                                        Toast.LENGTH_SHORT).show();
-                            } else {
-                                Log.e("register loi firebase",task.getException().getMessage());
-                                Toast.makeText(RegisterActivity.this, "Email đã được sử dụng",
-                                        Toast.LENGTH_SHORT).show();
-                            }
-                        });
+
             }
         });
     }
@@ -72,6 +98,7 @@ public class RegisterActivity extends AppCompatActivity {
         tvLogin = findViewById(R.id.tvLogin);
         btnRegister = findViewById(R.id.btnRegister);
         auth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
     }
 
     private boolean checkInfo() {

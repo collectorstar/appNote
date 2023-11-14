@@ -1,5 +1,7 @@
 package com.example.appnote.activities;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -54,16 +56,18 @@ public class CreateNoteActivity extends AppCompatActivity {
     private String selectedImagePath;
 
     private static final int REQUEST_CODE_STORAGE_PERMISSION = 1;
-    private static final int REQUEST_CODE_SELECT_IMAGE = 2;
     private AlertDialog dialogAddURL;
     private AlertDialog dialogDeleteNote;
     private Note alreadyAvailableNote;
+    private ActivityResultLauncher<Intent> callbackSelectImg;
+    private ActivityResultLauncher<String> callbackPermission;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_note);
+        setupCallback();
 
         ImageView imageBack = findViewById(R.id.imageBack);
         imageBack.setOnClickListener(view -> onBackPressed());
@@ -122,6 +126,40 @@ public class CreateNoteActivity extends AppCompatActivity {
 
         initMiscellaneous();
         setSubtitleIndicatorColor();
+    }
+
+    private void setupCallback() {
+        callbackSelectImg = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == RESULT_OK) {
+                if (result.getData() != null) {
+                    Uri selectedImageUri = result.getData().getData();
+                    if (selectedImageUri != null) {
+                        try {
+                            InputStream inputStream = getContentResolver().openInputStream(selectedImageUri);
+                            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                            imageNote.setImageBitmap(bitmap);
+                            imageNote.setVisibility(View.VISIBLE);
+                            findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
+
+                            selectedImagePath = getPathFromUri(selectedImageUri);
+
+                        } catch (Exception ex) {
+                            Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            }
+        });
+
+        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(),isGranted->{
+            if(isGranted){
+                selectImage();
+            }
+            else{
+                Toast.makeText(getApplicationContext(),"Please accept permission to call to the number",Toast.LENGTH_SHORT).show();
+            }
+        });
+
     }
 
     private void setViewOrUpdateNote() {
@@ -277,11 +315,7 @@ public class CreateNoteActivity extends AppCompatActivity {
 
             if (Build.VERSION.SDK_INT < 33) {
                 if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(
-                            CreateNoteActivity.this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                            REQUEST_CODE_STORAGE_PERMISSION
-                    );
+                    callbackPermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
                 } else {
                     selectImage();
                 }
@@ -289,11 +323,7 @@ public class CreateNoteActivity extends AppCompatActivity {
                 if (
                         ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED
                 ) {
-                    ActivityCompat.requestPermissions(
-                            CreateNoteActivity.this,
-                            new String[]{Manifest.permission.READ_MEDIA_IMAGES},
-                            REQUEST_CODE_STORAGE_PERMISSION
-                    );
+                    callbackPermission.launch(Manifest.permission.READ_MEDIA_IMAGES);
                 } else {
                     selectImage();
                 }
@@ -375,52 +405,7 @@ public class CreateNoteActivity extends AppCompatActivity {
     private void selectImage() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(intent, REQUEST_CODE_SELECT_IMAGE);
-        }
-    }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION && grantResults.length > 0) {
-            if (Build.VERSION.SDK_INT < 33) {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    selectImage();
-                } else {
-                    Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    selectImage();
-                } else {
-                    Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_SELECT_IMAGE && resultCode == RESULT_OK) {
-            if (data != null) {
-                Uri selectedImageUri = data.getData();
-                if (selectedImageUri != null) {
-                    try {
-                        InputStream inputStream = getContentResolver().openInputStream(selectedImageUri);
-                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                        imageNote.setImageBitmap(bitmap);
-                        imageNote.setVisibility(View.VISIBLE);
-                        findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
-
-                        selectedImagePath = getPathFromUri(selectedImageUri);
-
-                    } catch (Exception ex) {
-                        Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
+            callbackSelectImg.launch(intent);
         }
     }
 

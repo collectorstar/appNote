@@ -8,7 +8,7 @@
     android:background="@color/colorPrimary"
     tools:context=".activities.MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -102,7 +102,7 @@
 
             <ImageView
                 android:id="@+id/imageAddNote"
-                android:layout_width="@dimen/_23sdp"
+                android:layout_width="wrap_content"
                 android:layout_height="@dimen/_23sdp"
                 android:contentDescription="@string/app_name"
                 android:src="@drawable/ic_add_outline"

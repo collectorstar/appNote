@@ -1,8 +1,8 @@
 package com.example.appnote.activities;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -30,7 +30,6 @@ import android.text.TextWatcher;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -41,7 +40,6 @@ import com.example.appnote.adapters.NotesAdapter;
 import com.example.appnote.database.NotesDatabase;
 import com.example.appnote.entities.Note;
 import com.example.appnote.listeners.NotesListener;
-import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -52,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     public static final int REQUEST_CODE_ADD_NOTE = 1;
     public static final int REQUEST_CODE_UPDATE_NOTE = 2;
     public static final int REQUEST_CODE_SHOW_NOTES = 3;
-    public static final int REQUEST_CODE_SELECT_IMAGE = 4;
     public static final int REQUEST_CODE_STORAGE_PERMISSION = 5;
     private RecyclerView notesRecyclerView, navsRecyclerView;
     private List<Note> noteList;
@@ -63,10 +60,11 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
     private Toolbar toolbar;
     private DrawerLayout drawerLayout;
-    private NavigationView navigationView;
     private NavAdapter navAdapter;
     private FirebaseAuth auth;
-    private ActivityResultLauncher<Intent> callbackCreate,callbackUpdate;
+    private ActivityResultLauncher<Intent> callbackCreate,callbackUpdate,callbackSelectImg;
+    private ActivityResultLauncher<String> callbackPermission;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,12 +72,10 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         setContentView(R.layout.activity_main);
         auth = FirebaseAuth.getInstance();
         setupNav();
+        setupCallback();
 
         ImageView imageAddNoteMain = findViewById(R.id.imageAddNoteMain);
-        imageAddNoteMain.setOnClickListener(view -> startActivityForResult(
-                new Intent(getApplicationContext(), CreateNoteActivity.class),
-                REQUEST_CODE_ADD_NOTE
-        ));
+        imageAddNoteMain.setOnClickListener(view -> callbackCreate.launch(new Intent(getApplicationContext(), CreateNoteActivity.class)));
 
         notesRecyclerView = findViewById(R.id.notesRecyclerView);
         notesRecyclerView.setLayoutManager(
@@ -112,19 +108,12 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
             }
         });
 
-        findViewById(R.id.imageAddNote).setOnClickListener(view -> startActivityForResult(
-                new Intent(getApplicationContext(), CreateNoteActivity.class),
-                REQUEST_CODE_ADD_NOTE
-        ));
+        findViewById(R.id.imageAddNote).setOnClickListener(view -> callbackCreate.launch(new Intent(getApplicationContext(), CreateNoteActivity.class)));
 
         findViewById(R.id.imageAddImage).setOnClickListener(view -> {
             if (Build.VERSION.SDK_INT < 33) {
                 if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(
-                            MainActivity.this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                            REQUEST_CODE_STORAGE_PERMISSION
-                    );
+                    callbackPermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
                 } else {
                     selectImage();
                 }
@@ -132,11 +121,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                 if (
                         ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED
                 ) {
-                    ActivityCompat.requestPermissions(
-                            MainActivity.this,
-                            new String[]{Manifest.permission.READ_MEDIA_IMAGES},
-                            REQUEST_CODE_STORAGE_PERMISSION
-                    );
+                    callbackPermission.launch(Manifest.permission.READ_MEDIA_IMAGES);
                 } else {
                     selectImage();
                 }
@@ -148,10 +133,51 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
     }
 
+    private void setupCallback() {
+        callbackCreate = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if(result.getResultCode() == RESULT_OK ){
+                getNotes(REQUEST_CODE_ADD_NOTE, false);
+            }
+        });
+
+        callbackUpdate = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == RESULT_OK) {
+                boolean isNoteDeleted = result.getData().getBooleanExtra("isNoteDeleted", false);
+                getNotes(REQUEST_CODE_UPDATE_NOTE, isNoteDeleted);
+            }
+        });
+
+        callbackSelectImg = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == RESULT_OK) {
+                Uri selectedImageUri = result.getData().getData();
+                if (selectedImageUri != null) {
+                    try {
+                        String selectedImagePath = getPathFromUri(selectedImageUri);
+                        Intent intent = new Intent(getApplicationContext(), CreateNoteActivity.class);
+                        intent.putExtra("isFromQuickActions", true);
+                        intent.putExtra("quickActionType", "image");
+                        intent.putExtra("imagePath", selectedImagePath);
+                        callbackCreate.launch(intent);
+                    } catch (Exception ex) {
+                        Toast.makeText(getApplicationContext(), ex.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+
+        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(),isGranted->{
+            if(isGranted){
+                selectImage();
+            }
+            else{
+                Toast.makeText(getApplicationContext(),"Please accept permission to call to the number",Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     public void setupNav() {
         toolbar = findViewById(R.id.toolbar);
         drawerLayout = findViewById(R.id.drawerLayout);
-        navigationView = findViewById(R.id.navigationView);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         toolbar.setNavigationIcon(R.drawable.ic_menu);
@@ -179,27 +205,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private void selectImage() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(intent, REQUEST_CODE_SELECT_IMAGE);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION && grantResults.length > 0) {
-            if (Build.VERSION.SDK_INT < 33) {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    selectImage();
-                } else {
-                    Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    selectImage();
-                } else {
-                    Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-                }
-            }
+            callbackSelectImg.launch(intent);
         }
     }
 
@@ -224,7 +230,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         Intent intent = new Intent(getApplicationContext(), CreateNoteActivity.class);
         intent.putExtra("isViewOrUpdate", true);
         intent.putExtra("note", note);
-        startActivityForResult(intent, REQUEST_CODE_UPDATE_NOTE);
+        callbackUpdate.launch(intent);
     }
 
     private void getNotes(final int requestCode, boolean isNoteDeleted) {
@@ -264,41 +270,12 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         new GetNotesTask().execute();
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_ADD_NOTE && resultCode == RESULT_OK) {
-            getNotes(REQUEST_CODE_ADD_NOTE, false);
-        } else if (requestCode == REQUEST_CODE_UPDATE_NOTE && resultCode == RESULT_OK) {
-            if (data != null) {
-                boolean isNoteDeleted = data.getBooleanExtra("isNoteDeleted", false);
-                getNotes(REQUEST_CODE_UPDATE_NOTE, isNoteDeleted);
-            }
-        } else if (requestCode == REQUEST_CODE_SELECT_IMAGE && resultCode == RESULT_OK) {
-            if (data != null) {
-                Uri selectedImageUri = data.getData();
-                if (selectedImageUri != null) {
-                    try {
-                        String selectedImagePath = getPathFromUri(selectedImageUri);
-                        Intent intent = new Intent(getApplicationContext(), CreateNoteActivity.class);
-                        intent.putExtra("isFromQuickActions", true);
-                        intent.putExtra("quickActionType", "image");
-                        intent.putExtra("imagePath", selectedImagePath);
-                        startActivityForResult(intent, REQUEST_CODE_ADD_NOTE);
-                    } catch (Exception ex) {
-                        Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
-        }
-    }
-
     private void showAddURLDialog() {
         if (dialogAddURL == null) {
             AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
             View view = LayoutInflater.from(this).inflate(
                     R.layout.layout_add_url,
-                    (ViewGroup) findViewById(R.id.layoutAddUrlContainer)
+                    findViewById(R.id.layoutAddUrlContainer)
             );
             builder.setView(view);
 
@@ -324,7 +301,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                     intent.putExtra("isFromQuickActions", true);
                     intent.putExtra("quickActionType", "URL");
                     intent.putExtra("URL", inputURL.getText().toString());
-                    startActivityForResult(intent, REQUEST_CODE_ADD_NOTE);
+                    callbackCreate.launch(intent);
                 }
             });
 

@@ -13,6 +13,7 @@ import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,6 +36,7 @@ public class LoginActivity extends AppCompatActivity {
     private Button btnLogin;
     private FirebaseAuth auth;
     private DatabaseReference database;
+    private ProgressBar loadingLogin;
 
     @Override
     public void onStart() {
@@ -75,6 +77,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         auth = FirebaseAuth.getInstance();
         database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        loadingLogin = findViewById(R.id.loadingLogin);
     }
 
     private void fogotPass() {
@@ -95,6 +98,9 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
+                dialogView.findViewById(R.id.btnReset).setEnabled(false);
+                dialogView.findViewById(R.id.loadingReset).setVisibility(View.VISIBLE);
+
                 auth.sendPasswordResetEmail(userEmail)
                         .addOnCompleteListener(task -> {
                             if (task.isSuccessful()) {
@@ -103,6 +109,8 @@ public class LoginActivity extends AppCompatActivity {
                             } else {
                                 Toast.makeText(LoginActivity.this, "Unable to send, failed!", Toast.LENGTH_SHORT).show();
                             }
+                            dialogView.findViewById(R.id.btnReset).setEnabled(true);
+                            dialogView.findViewById(R.id.loadingReset).setVisibility(View.GONE);
                         });
 
             });
@@ -119,6 +127,8 @@ public class LoginActivity extends AppCompatActivity {
     private void login() {
         btnLogin.setOnClickListener(view -> {
             if (checkInfo()) {
+                loadingLogin.setVisibility(View.VISIBLE);
+                btnLogin.setEnabled(false);
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
@@ -126,7 +136,7 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
-                        if(snapshot.hasChild(emailKey)){
+                        if (snapshot.hasChild(emailKey)) {
                             auth.signInWithEmailAndPassword(email, password)
                                     .addOnCompleteListener(task -> {
                                         if (task.isSuccessful()) {
@@ -142,16 +152,21 @@ public class LoginActivity extends AppCompatActivity {
                                             Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
                                                     Toast.LENGTH_SHORT).show();
                                         }
+                                        loadingLogin.setVisibility(View.GONE);
+                                        btnLogin.setEnabled(true);
                                     });
-                        }else {
+                        } else {
                             Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
                                     Toast.LENGTH_SHORT).show();
+                            loadingLogin.setVisibility(View.GONE);
+                            btnLogin.setEnabled(true);
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        loadingLogin.setVisibility(View.GONE);
+                        btnLogin.setEnabled(true);
                     }
                 });
 

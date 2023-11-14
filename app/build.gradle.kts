@@ -81,5 +81,11 @@ dependencies {
     //fireabase database
     implementation("com.google.firebase:firebase-database")
 
+    //firebase storage
+    implementation("com.google.firebase:firebase-storage")
+
+    //glide
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
 
 }

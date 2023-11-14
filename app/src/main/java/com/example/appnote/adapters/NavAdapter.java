@@ -43,7 +43,7 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.NavViewHolder> {
     @Override
     public NavViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         return new NavViewHolder(
-                LayoutInflater.from(parent.getContext()).inflate(R.layout.item_container_nav, parent, false)
+                LayoutInflater.from(context).inflate(R.layout.item_container_nav, parent, false)
         );
     }
 

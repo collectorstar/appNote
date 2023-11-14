@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,11 +27,12 @@ import java.util.regex.Pattern;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText edEmail,edPassword;
+    private EditText edEmail, edPassword;
     private TextView tvLogin;
     private Button btnRegister;
     private FirebaseAuth auth;
     private DatabaseReference database;
+    private ProgressBar loadingRegister;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +46,9 @@ public class RegisterActivity extends AppCompatActivity {
 
     private void register() {
         btnRegister.setOnClickListener(view -> {
-            if(checkInfo()){
+            if (checkInfo()) {
+                loadingRegister.setVisibility(View.VISIBLE);
+                btnRegister.setEnabled(false);
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
@@ -52,9 +56,11 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
-                        if(snapshot.hasChild(emailKey)){
-                            Toast.makeText(RegisterActivity.this,"Email is already registered",Toast.LENGTH_SHORT).show();
-                        }else {
+                        if (snapshot.hasChild(emailKey)) {
+                            Toast.makeText(RegisterActivity.this, "Email is already registered", Toast.LENGTH_SHORT).show();
+                            loadingRegister.setVisibility(View.GONE);
+                            btnRegister.setEnabled(true);
+                        } else {
                             auth.createUserWithEmailAndPassword(email, password)
                                     .addOnCompleteListener(task -> {
                                         if (task.isSuccessful()) {
@@ -64,20 +70,22 @@ public class RegisterActivity extends AppCompatActivity {
                                             Toast.makeText(RegisterActivity.this, "Account Created",
                                                     Toast.LENGTH_SHORT).show();
                                         } else {
-                                            Log.e("register loi firebase",task.getException().getMessage());
+                                            Log.e("register loi firebase", task.getException().getMessage());
                                             Toast.makeText(RegisterActivity.this, "Email đã được sử dụng",
                                                     Toast.LENGTH_SHORT).show();
                                         }
+                                        loadingRegister.setVisibility(View.GONE);
+                                        btnRegister.setEnabled(true);
                                     });
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        loadingRegister.setVisibility(View.GONE);
+                        btnRegister.setEnabled(true);
                     }
                 });
-
 
 
             }
@@ -86,19 +94,20 @@ public class RegisterActivity extends AppCompatActivity {
 
     private void gotoLogin() {
         tvLogin.setOnClickListener(view -> {
-            Intent intent = new Intent(RegisterActivity.this,LoginActivity.class);
+            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
             startActivity(intent);
             finish();
         });
     }
 
-    private void init(){
+    private void init() {
         edEmail = findViewById(R.id.edEmail);
         edPassword = findViewById(R.id.edPassword);
         tvLogin = findViewById(R.id.tvLogin);
         btnRegister = findViewById(R.id.btnRegister);
         auth = FirebaseAuth.getInstance();
         database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        loadingRegister = findViewById(R.id.loadingRegister);
     }
 
     private boolean checkInfo() {

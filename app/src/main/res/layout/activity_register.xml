@@ -23,7 +23,7 @@
         android:id="@+id/headerLogin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/_10sdp"
+        android:layout_marginTop="@dimen/_50sdp"
         android:text="@string/register"
         android:textColor="@color/colorWhite"
         android:textSize="@dimen/_30ssp"
@@ -129,6 +129,16 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/layoutPassword" />
+
+    <ProgressBar
+        android:id="@+id/loadingRegister"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/btnRegister"
+        app:layout_constraintLeft_toLeftOf="@id/btnRegister"
+        app:layout_constraintRight_toRightOf="@id/btnRegister"
+        app:layout_constraintTop_toTopOf="@id/btnRegister" />
 
     <TextView
         android:id="@+id/tvLogin"

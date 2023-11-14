@@ -1,5 +1,6 @@
 package com.example.appnote.activities;
 
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -64,8 +65,8 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private NavAdapter navAdapter;
-
     private FirebaseAuth auth;
+    private ActivityResultLauncher<Intent> callbackCreate,callbackUpdate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

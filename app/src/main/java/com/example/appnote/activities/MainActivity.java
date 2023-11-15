@@ -2,11 +2,9 @@ package com.example.appnote.activities;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -50,7 +48,6 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     public static final int REQUEST_CODE_ADD_NOTE = 1;
     public static final int REQUEST_CODE_UPDATE_NOTE = 2;
     public static final int REQUEST_CODE_SHOW_NOTES = 3;
-    public static final int REQUEST_CODE_STORAGE_PERMISSION = 5;
     private RecyclerView notesRecyclerView, navsRecyclerView;
     private List<Note> noteList;
     private NotesAdapter notesAdapter;
@@ -170,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                 selectImage();
             }
             else{
-                Toast.makeText(getApplicationContext(),"Please accept permission to call to the number",Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(),"Please accept permission",Toast.LENGTH_SHORT).show();
             }
         });
     }

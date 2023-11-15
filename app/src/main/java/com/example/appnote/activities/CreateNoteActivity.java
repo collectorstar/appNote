@@ -2,11 +2,8 @@ package com.example.appnote.activities;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
@@ -55,7 +52,6 @@ public class CreateNoteActivity extends AppCompatActivity {
     private String selectedNoteColor;
     private String selectedImagePath;
 
-    private static final int REQUEST_CODE_STORAGE_PERMISSION = 1;
     private AlertDialog dialogAddURL;
     private AlertDialog dialogDeleteNote;
     private Note alreadyAvailableNote;
@@ -156,7 +152,7 @@ public class CreateNoteActivity extends AppCompatActivity {
                 selectImage();
             }
             else{
-                Toast.makeText(getApplicationContext(),"Please accept permission to call to the number",Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(),"Please accept permission",Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -387,9 +383,7 @@ public class CreateNoteActivity extends AppCompatActivity {
                 dialogDeleteNote = null;
             });
 
-            dialogDeleteNote.setOnCancelListener(dialog -> {
-                dialogDeleteNote = null;
-            });
+            dialogDeleteNote.setOnCancelListener(dialog -> dialogDeleteNote = null);
 
         }
         dialogDeleteNote.show();
@@ -429,7 +423,7 @@ public class CreateNoteActivity extends AppCompatActivity {
             AlertDialog.Builder builder = new AlertDialog.Builder(CreateNoteActivity.this);
             View view = LayoutInflater.from(this).inflate(
                     R.layout.layout_add_url,
-                    (ViewGroup) findViewById(R.id.layoutAddUrlContainer)
+                    findViewById(R.id.layoutAddUrlContainer)
             );
             builder.setView(view);
 
@@ -460,9 +454,7 @@ public class CreateNoteActivity extends AppCompatActivity {
                 dialogAddURL = null;
             });
 
-            dialogAddURL.setOnCancelListener(dialog -> {
-                dialogAddURL = null;
-            });
+            dialogAddURL.setOnCancelListener(dialog -> dialogAddURL = null);
 
             dialogAddURL.show();
         }

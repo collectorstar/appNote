@@ -13,15 +13,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -36,6 +36,7 @@ import com.example.appnote.R;
 import com.example.appnote.adapters.NavAdapter;
 import com.example.appnote.adapters.NotesAdapter;
 import com.example.appnote.database.NotesDatabase;
+import com.example.appnote.database.SubThread;
 import com.example.appnote.entities.Note;
 import com.example.appnote.listeners.NotesListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -52,9 +53,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private List<Note> noteList;
     private NotesAdapter notesAdapter;
     private int noteClickedPosition = -1;
-
     private AlertDialog dialogAddURL;
-
     private Toolbar toolbar;
     private DrawerLayout drawerLayout;
     private NavAdapter navAdapter;
@@ -176,7 +175,6 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         toolbar = findViewById(R.id.toolbar);
         drawerLayout = findViewById(R.id.drawerLayout);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         toolbar.setNavigationIcon(R.drawable.ic_menu);
         toolbar.setNavigationOnClickListener(view -> drawerLayout.openDrawer(GravityCompat.START));
 
@@ -184,7 +182,6 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         navAdapter = new NavAdapter(this, (position, itemName) -> {
             switch (itemName) {
                 case "Account Info":
-                    break;
                 case "Change Password":
                     break;
                 case "Logout":
@@ -231,20 +228,10 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     }
 
     private void getNotes(final int requestCode, boolean isNoteDeleted) {
-
-        @SuppressLint("StaticFieldLeak")
-        class GetNotesTask extends AsyncTask<Void, Void, List<Note>> {
-
-            @Override
-            protected List<Note> doInBackground(Void... voids) {
-                return NotesDatabase
-                        .getDatabase(getApplicationContext())
-                        .noteDao().getAllNotes();
-            }
-
-            @Override
-            protected void onPostExecute(List<Note> notes) {
-                super.onPostExecute(notes);
+        Handler handler = new Handler(Looper.getMainLooper());
+        Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> {
+            List<Note> notes = NotesDatabase.getDatabase(getApplicationContext()).noteDao().getAllNotes();
+            handler.post(() -> {
                 if (requestCode == REQUEST_CODE_SHOW_NOTES) {
                     noteList.addAll(notes);
                     notesAdapter.notifyDataSetChanged();
@@ -261,10 +248,9 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                         notesAdapter.notifyItemChanged(noteClickedPosition);
                     }
                 }
-            }
-        }
+            });
 
-        new GetNotesTask().execute();
+        });
     }
 
     private void showAddURLDialog() {
@@ -307,9 +293,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                 dialogAddURL = null;
             });
 
-            dialogAddURL.setOnCancelListener(dialog -> {
-                dialogAddURL = null;
-            });
+            dialogAddURL.setOnCancelListener(dialog -> dialogAddURL = null);
 
             dialogAddURL.show();
         }

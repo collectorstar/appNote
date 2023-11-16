@@ -7,6 +7,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
@@ -18,6 +20,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.appnote.R;
+import com.example.appnote.database.SubThread;
+import com.example.appnote.entities.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -43,6 +47,8 @@ public class LoginActivity extends AppCompatActivity {
         super.onStart();
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null) {
+            User.Email = currentUser.getEmail();
+            User.EmailKey = User.Email.replace(".", "_dot_").replace("@", "_at_");
             Intent intent = new Intent(getApplicationContext(), MainActivity.class);
             startActivity(intent);
             finish();
@@ -101,8 +107,10 @@ public class LoginActivity extends AppCompatActivity {
                 dialogView.findViewById(R.id.btnReset).setEnabled(false);
                 dialogView.findViewById(R.id.loadingReset).setVisibility(View.VISIBLE);
 
-                auth.sendPasswordResetEmail(userEmail)
-                        .addOnCompleteListener(task -> {
+                Handler handler = new Handler(Looper.getMainLooper());
+
+                boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> auth.sendPasswordResetEmail(userEmail)
+                        .addOnCompleteListener(task -> handler.post(() -> {
                             if (task.isSuccessful()) {
                                 Toast.makeText(LoginActivity.this, "Check your email", Toast.LENGTH_SHORT).show();
                                 dialog.dismiss();
@@ -111,8 +119,11 @@ public class LoginActivity extends AppCompatActivity {
                             }
                             dialogView.findViewById(R.id.btnReset).setEnabled(true);
                             dialogView.findViewById(R.id.loadingReset).setVisibility(View.GONE);
-                        });
-
+                        })));
+                if(!isWork){
+                    dialogView.findViewById(R.id.btnReset).setEnabled(true);
+                    dialogView.findViewById(R.id.loadingReset).setVisibility(View.GONE);
+                }
             });
 
             dialogView.findViewById(R.id.btnCancel).setOnClickListener(view12 -> dialog.dismiss());
@@ -132,45 +143,49 @@ public class LoginActivity extends AppCompatActivity {
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
-                database.addListenerForSingleValueEvent(new ValueEventListener() {
+                Handler handler = new Handler(Looper.getMainLooper());
+                boolean iswork = SubThread.checkNetworking(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
                         if (snapshot.hasChild(emailKey)) {
                             auth.signInWithEmailAndPassword(email, password)
-                                    .addOnCompleteListener(task -> {
+                                    .addOnCompleteListener(task -> handler.post(() -> {
                                         if (task.isSuccessful()) {
                                             Toast.makeText(getApplicationContext(), "Login successful",
                                                     Toast.LENGTH_SHORT).show();
-
+                                            User.Email = auth.getCurrentUser().getEmail();
+                                            User.EmailKey = User.Email.replace(".", "_dot_").replace("@", "_at_");
                                             Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                                             startActivity(intent);
                                             finish();
-
                                         } else {
                                             Log.e("Login firebase error", task.getException().getMessage());
-                                            Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
+                                            Toast.makeText(getApplicationContext(), "Something is wrong",
                                                     Toast.LENGTH_SHORT).show();
                                         }
                                         loadingLogin.setVisibility(View.GONE);
                                         btnLogin.setEnabled(true);
-                                    });
+                                    }));
                         } else {
-                            Toast.makeText(getApplicationContext(), "Email or Password wrongs!",
-                                    Toast.LENGTH_SHORT).show();
-                            loadingLogin.setVisibility(View.GONE);
-                            btnLogin.setEnabled(true);
+                            handler.post(() -> Toast.makeText(getApplicationContext(), "Email or Password is incorrect!",
+                                    Toast.LENGTH_SHORT).show());
                         }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        loadingLogin.setVisibility(View.GONE);
-                        btnLogin.setEnabled(true);
+                        handler.post(() -> {
+                            loadingLogin.setVisibility(View.GONE);
+                            btnLogin.setEnabled(true);
+                        });
                     }
-                });
+                }));
 
-
+                if(!iswork){
+                    loadingLogin.setVisibility(View.GONE);
+                    btnLogin.setEnabled(true);
+                }
             }
         });
     }

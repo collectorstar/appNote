@@ -47,6 +47,7 @@
         android:paddingStart="@dimen/_8sdp"
         android:paddingEnd="@dimen/_8sdp"
         android:text="@string/are_you_sure_you_want_to_delete_this_note"
+        android:textColor="@color/colorWhite"
         android:textSize="@dimen/_13sdp"
         app:layout_constraintTop_toBottomOf="@id/imageDeleteNote" />
 

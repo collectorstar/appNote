@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -15,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.appnote.R;
+import com.example.appnote.database.SubThread;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -52,41 +55,49 @@ public class RegisterActivity extends AppCompatActivity {
                 String email = edEmail.getText().toString().trim();
                 String password = edPassword.getText().toString();
 
-                database.addListenerForSingleValueEvent(new ValueEventListener() {
+                Handler handler = new Handler(Looper.getMainLooper());
+                Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
-                        if (snapshot.hasChild(emailKey)) {
-                            Toast.makeText(RegisterActivity.this, "Email is already registered", Toast.LENGTH_SHORT).show();
-                            loadingRegister.setVisibility(View.GONE);
-                            btnRegister.setEnabled(true);
-                        } else {
-                            auth.createUserWithEmailAndPassword(email, password)
-                                    .addOnCompleteListener(task -> {
-                                        if (task.isSuccessful()) {
+                        handler.post(() -> {
+                            String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
+                            if (snapshot.hasChild(emailKey)) {
+                                Toast.makeText(RegisterActivity.this, "Email is already registered", Toast.LENGTH_SHORT).show();
+                                loadingRegister.setVisibility(View.GONE);
+                                btnRegister.setEnabled(true);
+                            } else {
+                                auth.createUserWithEmailAndPassword(email, password)
+                                        .addOnCompleteListener(task -> {
+                                            if (task.isSuccessful()) {
 
-                                            database.child(emailKey).child("email").setValue(email);
+                                                database.child(emailKey).child("email").setValue(email);
 
-                                            Toast.makeText(RegisterActivity.this, "Account Created",
-                                                    Toast.LENGTH_SHORT).show();
-                                        } else {
-                                            Log.e("register loi firebase", task.getException().getMessage());
-                                            Toast.makeText(RegisterActivity.this, "Email đã được sử dụng",
-                                                    Toast.LENGTH_SHORT).show();
-                                        }
-                                        loadingRegister.setVisibility(View.GONE);
-                                        btnRegister.setEnabled(true);
-                                    });
-                        }
+                                                Toast.makeText(RegisterActivity.this, "Account Created",
+                                                        Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                Log.e("register loi firebase", task.getException().getMessage());
+                                                Toast.makeText(RegisterActivity.this, "Email đã được sử dụng",
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                            loadingRegister.setVisibility(View.GONE);
+                                            btnRegister.setEnabled(true);
+                                        });
+                            }
+                        });
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        loadingRegister.setVisibility(View.GONE);
-                        btnRegister.setEnabled(true);
+                        handler.post(() -> {
+                            loadingRegister.setVisibility(View.GONE);
+                            btnRegister.setEnabled(true);
+                        });
                     }
-                });
-
+                }));
+                if(!isWork){
+                    loadingRegister.setVisibility(View.GONE);
+                    btnRegister.setEnabled(true);
+                }
 
             }
         });

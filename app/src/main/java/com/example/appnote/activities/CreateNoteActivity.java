@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -17,14 +16,14 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -33,8 +32,11 @@ import android.widget.Toast;
 
 import com.example.appnote.R;
 import com.example.appnote.database.NotesDatabase;
+import com.example.appnote.database.SubThread;
 import com.example.appnote.entities.Note;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 
 import java.io.InputStream;
@@ -57,6 +59,7 @@ public class CreateNoteActivity extends AppCompatActivity {
     private Note alreadyAvailableNote;
     private ActivityResultLauncher<Intent> callbackSelectImg;
     private ActivityResultLauncher<String> callbackPermission;
+    private DatabaseReference database;
 
 
     @Override
@@ -64,6 +67,8 @@ public class CreateNoteActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_note);
         setupCallback();
+
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
 
         ImageView imageBack = findViewById(R.id.imageBack);
         imageBack.setOnClickListener(view -> onBackPressed());
@@ -202,24 +207,16 @@ public class CreateNoteActivity extends AppCompatActivity {
             note.setId(alreadyAvailableNote.getId());
         }
 
-        @SuppressLint("StaticFieldLeak")
-        class SaveNoteTask extends AsyncTask<Void, Void, Void> {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                NotesDatabase.getDatabase(getApplicationContext()).noteDao().insertNote(note);
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void unused) {
-                super.onPostExecute(unused);
+        //insert vao realtime database
+        Handler handler = new Handler(Looper.getMainLooper());
+        Boolean isWork = SubThread.checkNetworking(this, () -> {
+            NotesDatabase.getDatabase(getApplicationContext()).noteDao().insertNote(note);
+            handler.post(() -> {
                 Intent intent = new Intent();
                 setResult(RESULT_OK, intent);
                 finish();
-            }
-        }
-
-        new SaveNoteTask().execute();
+            });
+        });
     }
 
     private void initMiscellaneous() {
@@ -345,7 +342,7 @@ public class CreateNoteActivity extends AppCompatActivity {
             AlertDialog.Builder builder = new AlertDialog.Builder(CreateNoteActivity.this);
             View view = LayoutInflater.from(this).inflate(
                     R.layout.layout_delete_note,
-                    (ViewGroup) findViewById(R.id.layoutDeleteNoteContainer)
+                    findViewById(R.id.layoutDeleteNoteContainer)
             );
             builder.setView(view);
             dialogDeleteNote = builder.create();
@@ -353,29 +350,19 @@ public class CreateNoteActivity extends AppCompatActivity {
                 dialogDeleteNote.getWindow().setBackgroundDrawable(new ColorDrawable(0));
             }
 
-            view.findViewById(R.id.textDeleteNote).setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    class DeleteNoteTask extends AsyncTask<Void, Void, Void> {
+            view.findViewById(R.id.textDeleteNote).setOnClickListener(view12 -> {
 
-                        @Override
-                        protected Void doInBackground(Void... voids) {
-                            NotesDatabase.getDatabase(getApplicationContext()).noteDao().deleteNote(alreadyAvailableNote);
-                            return null;
-                        }
+                Handler handler = new Handler(Looper.getMainLooper());
+                Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> {
+                    NotesDatabase.getDatabase(getApplicationContext()).noteDao().deleteNote(alreadyAvailableNote);
+                    handler.post(() -> {
+                        Intent intent = new Intent();
+                        intent.putExtra("isNoteDeleted", true);
+                        setResult(RESULT_OK, intent);
+                        finish();
+                    });
+                });
 
-                        @Override
-                        protected void onPostExecute(Void unused) {
-                            super.onPostExecute(unused);
-                            Intent intent = new Intent();
-                            intent.putExtra("isNoteDeleted", true);
-                            setResult(RESULT_OK, intent);
-                            finish();
-                        }
-                    }
-
-                    new DeleteNoteTask().execute();
-                }
             });
 
             view.findViewById(R.id.textCancel).setOnClickListener(view1 -> {

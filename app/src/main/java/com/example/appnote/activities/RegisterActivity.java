@@ -56,7 +56,7 @@ public class RegisterActivity extends AppCompatActivity {
                 String password = edPassword.getText().toString();
 
                 Handler handler = new Handler(Looper.getMainLooper());
-                Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
+                Boolean isWork = SubThread.runSubThread(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         handler.post(() -> {

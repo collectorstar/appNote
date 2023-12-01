@@ -2,6 +2,7 @@ package com.example.appnote.activities;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -25,23 +26,32 @@ import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.example.appnote.R;
 import com.example.appnote.adapters.NavAdapter;
 import com.example.appnote.adapters.NotesAdapter;
-import com.example.appnote.database.NotesDatabase;
 import com.example.appnote.database.SubThread;
 import com.example.appnote.entities.Note;
+import com.example.appnote.entities.User;
 import com.example.appnote.listeners.NotesListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements NotesListener {
@@ -58,8 +68,10 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private DrawerLayout drawerLayout;
     private NavAdapter navAdapter;
     private FirebaseAuth auth;
-    private ActivityResultLauncher<Intent> callbackCreate,callbackUpdate,callbackSelectImg;
+    private ActivityResultLauncher<Intent> callbackCreate, callbackUpdate, callbackSelectImg;
     private ActivityResultLauncher<String> callbackPermission;
+    private DatabaseReference database;
+    private ProgressBar loadingListNote;
 
 
     @Override
@@ -69,6 +81,8 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         auth = FirebaseAuth.getInstance();
         setupNav();
         setupCallback();
+        loadingListNote = findViewById(R.id.loadingListNote);
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
 
         ImageView imageAddNoteMain = findViewById(R.id.imageAddNoteMain);
         imageAddNoteMain.setOnClickListener(view -> callbackCreate.launch(new Intent(getApplicationContext(), CreateNoteActivity.class)));
@@ -79,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         );
 
         noteList = new ArrayList<>();
-        notesAdapter = new NotesAdapter(noteList, this);
+        notesAdapter = new NotesAdapter(noteList, getApplicationContext(), this);
         notesRecyclerView.setAdapter(notesAdapter);
 
         getNotes(REQUEST_CODE_SHOW_NOTES, false);
@@ -131,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
     private void setupCallback() {
         callbackCreate = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if(result.getResultCode() == RESULT_OK ){
+            if (result.getResultCode() == RESULT_OK) {
                 getNotes(REQUEST_CODE_ADD_NOTE, false);
             }
         });
@@ -161,12 +175,11 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
             }
         });
 
-        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(),isGranted->{
-            if(isGranted){
+        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if (isGranted) {
                 selectImage();
-            }
-            else{
-                Toast.makeText(getApplicationContext(),"Please accept permission",Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Please accept permission", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -186,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                     break;
                 case "Logout":
                     auth.signOut();
-                    Intent intent = new Intent(MainActivity.this,LoginActivity.class);
+                    Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                     startActivity(intent);
                     finish();
                     break;
@@ -228,29 +241,68 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     }
 
     private void getNotes(final int requestCode, boolean isNoteDeleted) {
-        Handler handler = new Handler(Looper.getMainLooper());
-        Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> {
-            List<Note> notes = NotesDatabase.getDatabase(getApplicationContext()).noteDao().getAllNotes();
-            handler.post(() -> {
-                if (requestCode == REQUEST_CODE_SHOW_NOTES) {
-                    noteList.addAll(notes);
-                    notesAdapter.notifyDataSetChanged();
-                } else if (requestCode == REQUEST_CODE_ADD_NOTE) {
-                    noteList.add(0, notes.get(0));
-                    notesAdapter.notifyItemInserted(0);
-                    notesRecyclerView.smoothScrollToPosition(0);
-                } else if (requestCode == REQUEST_CODE_UPDATE_NOTE) {
-                    noteList.remove(noteClickedPosition);
-                    if (isNoteDeleted) {
-                        notesAdapter.notifyItemRemoved(noteClickedPosition);
-                    } else {
-                        noteList.add(noteClickedPosition, notes.get(noteClickedPosition));
-                        notesAdapter.notifyItemChanged(noteClickedPosition);
-                    }
-                }
-            });
+        try {
+            Handler handler = new Handler(Looper.getMainLooper());
+            SubThread.runSubThread(getApplicationContext(), () -> {
+                List<Note> notes = new ArrayList<>();
 
+                this.setLoadingListNote(true);
+                database.child(User.EmailKey).child("notes").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot noteSnapshot : snapshot.getChildren()) {
+                            Note note = noteSnapshot.getValue(Note.class);
+                            notes.add(0, note);
+                        }
+                        handler.post(() -> {
+                            if (requestCode == REQUEST_CODE_SHOW_NOTES) {
+                                noteList.addAll(notes);
+                                notesAdapter.notifyDataSetChanged();
+                            } else if (requestCode == REQUEST_CODE_ADD_NOTE) {
+                                noteList.add(0, notes.get(0));
+                                notesAdapter.notifyItemInserted(0);
+                                notesRecyclerView.smoothScrollToPosition(0);
+                            } else if (requestCode == REQUEST_CODE_UPDATE_NOTE) {
+                                noteList.remove(noteClickedPosition);
+                                if (isNoteDeleted) {
+                                    notesAdapter.notifyItemRemoved(noteClickedPosition);
+                                } else {
+                                    noteList.add(noteClickedPosition, notes.get(noteClickedPosition));
+                                    notesAdapter.notifyItemChanged(noteClickedPosition);
+                                }
+                            }
+                            setLoadingListNote(false);
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        handler.post(() -> Toast.makeText(getApplicationContext(), "Co loi xay ra", Toast.LENGTH_SHORT).show());
+                    }
+                });
+
+            });
+        } catch (Exception ex) {
+            Log.e("loi comeback", ex.getMessage());
+        }
+
+    }
+
+    private void setLoadingListNote(boolean loading) {
+
+        runOnUiThread(() -> {
+            if (loading) {
+//                notesRecyclerView.setEnabled(false);
+                notesRecyclerView.setVisibility(View.GONE);
+                loadingListNote.setVisibility(View.VISIBLE);
+            } else {
+//                notesRecyclerView.setEnabled(true);
+                notesRecyclerView.setVisibility(View.VISIBLE);
+                loadingListNote.setVisibility(View.GONE);
+            }
         });
+
+
     }
 
     private void showAddURLDialog() {

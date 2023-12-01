@@ -109,7 +109,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 Handler handler = new Handler(Looper.getMainLooper());
 
-                boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> auth.sendPasswordResetEmail(userEmail)
+                boolean isWork = SubThread.runSubThread(getApplicationContext(), () -> auth.sendPasswordResetEmail(userEmail)
                         .addOnCompleteListener(task -> handler.post(() -> {
                             if (task.isSuccessful()) {
                                 Toast.makeText(LoginActivity.this, "Check your email", Toast.LENGTH_SHORT).show();
@@ -120,7 +120,7 @@ public class LoginActivity extends AppCompatActivity {
                             dialogView.findViewById(R.id.btnReset).setEnabled(true);
                             dialogView.findViewById(R.id.loadingReset).setVisibility(View.GONE);
                         })));
-                if(!isWork){
+                if (!isWork) {
                     dialogView.findViewById(R.id.btnReset).setEnabled(true);
                     dialogView.findViewById(R.id.loadingReset).setVisibility(View.GONE);
                 }
@@ -144,7 +144,7 @@ public class LoginActivity extends AppCompatActivity {
                 String password = edPassword.getText().toString();
 
                 Handler handler = new Handler(Looper.getMainLooper());
-                boolean iswork = SubThread.checkNetworking(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
+                boolean iswork = SubThread.runSubThread(getApplicationContext(), () -> database.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String emailKey = email.replace(".", "_dot_").replace("@", "_at_");
@@ -168,8 +168,12 @@ public class LoginActivity extends AppCompatActivity {
                                         btnLogin.setEnabled(true);
                                     }));
                         } else {
-                            handler.post(() -> Toast.makeText(getApplicationContext(), "Email or Password is incorrect!",
-                                    Toast.LENGTH_SHORT).show());
+                            handler.post(() -> {
+                                Toast.makeText(getApplicationContext(), "Email or Password is incorrect!",
+                                        Toast.LENGTH_SHORT).show();
+                                loadingLogin.setVisibility(View.GONE);
+                                btnLogin.setEnabled(true);
+                            });
                         }
                     }
 
@@ -182,7 +186,7 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 }));
 
-                if(!iswork){
+                if (!iswork) {
                     loadingLogin.setVisibility(View.GONE);
                     btnLogin.setEnabled(true);
                 }

@@ -213,7 +213,7 @@
         android:layout_marginBottom="@dimen/_10sdp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:visibility="visible"
+        android:visibility="gone"
         tools:ignore="UseCompoundDrawables">
         <ImageView
             android:layout_width="@dimen/_22sdp"

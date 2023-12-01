@@ -1,16 +1,17 @@
 package com.example.appnote.activities;
 
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -21,25 +22,30 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.appnote.R;
-import com.example.appnote.database.NotesDatabase;
 import com.example.appnote.database.SubThread;
 import com.example.appnote.entities.Note;
+import com.example.appnote.entities.User;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 
-import java.io.InputStream;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -47,12 +53,10 @@ import java.util.Locale;
 public class CreateNoteActivity extends AppCompatActivity {
     private EditText inputNoteTitle, inputNoteSubtitle, inputNoteText;
     private View viewSubtitleIndicator;
-    private ImageView imageNote;
-    private TextView textWebURL;
+    private ImageView imageNote,imageBack,imageSave,imageRemoveImage,imageRemoveWebURL;
+    private TextView textWebURL,textMicellaneous,textDateTime;
     private LinearLayout layoutWebURL;
-    private TextView textDateTime;
-    private String selectedNoteColor;
-    private String selectedImagePath;
+    private String selectedNoteColor,selectedImagePath,KeyNote;
 
     private AlertDialog dialogAddURL;
     private AlertDialog dialogDeleteNote;
@@ -60,7 +64,9 @@ public class CreateNoteActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> callbackSelectImg;
     private ActivityResultLauncher<String> callbackPermission;
     private DatabaseReference database;
-
+    private StorageReference storage;
+    private ConstraintLayout layoutSaveNote;
+    private ProgressBar loadingSaveNote;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,9 +75,10 @@ public class CreateNoteActivity extends AppCompatActivity {
         setupCallback();
 
         database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        storage = FirebaseStorage.getInstance().getReference();
 
-        ImageView imageBack = findViewById(R.id.imageBack);
-        imageBack.setOnClickListener(view -> onBackPressed());
+        imageBack = findViewById(R.id.imageBack);
+        imageBack.setOnClickListener(view -> finish());
 
         inputNoteTitle = findViewById(R.id.inputNoteTitle);
         inputNoteSubtitle = findViewById(R.id.inputNoteSubTitle);
@@ -81,13 +88,15 @@ public class CreateNoteActivity extends AppCompatActivity {
         imageNote = findViewById(R.id.imageNote);
         textWebURL = findViewById(R.id.textWebURL);
         layoutWebURL = findViewById(R.id.layoutWebURL);
+        layoutSaveNote = findViewById(R.id.layoutSaveNote);
+        loadingSaveNote = findViewById(R.id.loadingSaveNote);
 
 
         textDateTime.setText(
                 new SimpleDateFormat("EEEE, dd,MMMM yyyy HH:mm a", Locale.getDefault())
                         .format(new Date())
         );
-        ImageView imageSave = findViewById(R.id.imageSave);
+        imageSave = findViewById(R.id.imageSave);
         imageSave.setOnClickListener(view -> saveNote());
 
         selectedNoteColor = "#333333";
@@ -95,30 +104,34 @@ public class CreateNoteActivity extends AppCompatActivity {
 
         if (getIntent().getBooleanExtra("isViewOrUpdate", false)) {
             alreadyAvailableNote = (Note) getIntent().getSerializableExtra("note");
+            KeyNote = alreadyAvailableNote.getGenkey()+"";
             setViewOrUpdateNote();
+        } else {
+            SubThread.runSubThread(this, () -> KeyNote = database.child(User.EmailKey).child("notes").push().getKey());
         }
-
-        findViewById(R.id.imageRemoveWebURL).setOnClickListener(view -> {
+        imageRemoveWebURL = findViewById(R.id.imageRemoveWebURL);
+        imageRemoveWebURL.setOnClickListener(view -> {
             textWebURL.setText(null);
             layoutWebURL.setVisibility(View.GONE);
         });
 
-        findViewById(R.id.imageRemoveImage).setOnClickListener(view -> {
+        imageRemoveImage = findViewById(R.id.imageRemoveImage);
+        imageRemoveImage.setOnClickListener(view -> {
             imageNote.setImageBitmap(null);
             imageNote.setVisibility(View.GONE);
             findViewById(R.id.imageRemoveImage).setVisibility(View.GONE);
             selectedImagePath = "";
         });
 
-        if(getIntent().getBooleanExtra("isFromQuickActions",false)){
+        if (getIntent().getBooleanExtra("isFromQuickActions", false)) {
             String type = getIntent().getStringExtra("quickActionType");
-            if(type != null){
-                if(type.equals("image")){
+            if (type != null) {
+                if (type.equals("image")) {
                     selectedImagePath = getIntent().getStringExtra("imagePath");
                     imageNote.setImageBitmap(BitmapFactory.decodeFile(selectedImagePath));
                     imageNote.setVisibility(View.VISIBLE);
                     findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
-                }else if(type.equals("URL")){
+                } else if (type.equals("URL")) {
                     textWebURL.setText(getIntent().getStringExtra("URL"));
                     layoutWebURL.setVisibility(View.VISIBLE);
                 }
@@ -136,9 +149,7 @@ public class CreateNoteActivity extends AppCompatActivity {
                     Uri selectedImageUri = result.getData().getData();
                     if (selectedImageUri != null) {
                         try {
-                            InputStream inputStream = getContentResolver().openInputStream(selectedImageUri);
-                            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                            imageNote.setImageBitmap(bitmap);
+                            Glide.with(this).load(selectedImageUri).into(imageNote);
                             imageNote.setVisibility(View.VISIBLE);
                             findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
 
@@ -152,12 +163,11 @@ public class CreateNoteActivity extends AppCompatActivity {
             }
         });
 
-        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(),isGranted->{
-            if(isGranted){
+        callbackPermission = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if (isGranted) {
                 selectImage();
-            }
-            else{
-                Toast.makeText(getApplicationContext(),"Please accept permission",Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Please accept permission", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -169,7 +179,8 @@ public class CreateNoteActivity extends AppCompatActivity {
         inputNoteText.setText(alreadyAvailableNote.getNoteText());
         textDateTime.setText(alreadyAvailableNote.getDatetime());
         if (alreadyAvailableNote.getImagePath() != null && !alreadyAvailableNote.getImagePath().trim().isEmpty()) {
-            imageNote.setImageBitmap(BitmapFactory.decodeFile(alreadyAvailableNote.getImagePath()));
+
+            Glide.with(getApplicationContext()).load(alreadyAvailableNote.getImagePath()).into(imageNote);
             imageNote.setVisibility(View.VISIBLE);
             findViewById(R.id.imageRemoveImage).setVisibility(View.VISIBLE);
             selectedImagePath = alreadyAvailableNote.getImagePath();
@@ -198,31 +209,88 @@ public class CreateNoteActivity extends AppCompatActivity {
         note.setDatetime(textDateTime.getText().toString());
         note.setColor(selectedNoteColor);
         note.setImagePath(selectedImagePath);
+        note.setGenkey(KeyNote);
 
         if (layoutWebURL.getVisibility() == View.VISIBLE) {
             note.setWebLink(textWebURL.getText().toString());
         }
 
-        if (alreadyAvailableNote != null) {
-            note.setId(alreadyAvailableNote.getId());
-        }
-
-        //insert vao realtime database
         Handler handler = new Handler(Looper.getMainLooper());
-        Boolean isWork = SubThread.checkNetworking(this, () -> {
-            NotesDatabase.getDatabase(getApplicationContext()).noteDao().insertNote(note);
-            handler.post(() -> {
-                Intent intent = new Intent();
-                setResult(RESULT_OK, intent);
-                finish();
-            });
+        SubThread.runSubThread(this, () -> {
+            setLoadingSaveNote(true);
+            String path = User.EmailKey + "/" + KeyNote + "/image.jpg";
+            if (note.getImagePath() != null && !note.getImagePath().equals("")) {
+                StorageReference imageRef = storage.child(path);
+                if (note.getImagePath().startsWith("http") || note.getImagePath().startsWith("https")) {
+                    database.child(User.EmailKey).child("notes").child(KeyNote).setValue(note).addOnCompleteListener(task -> {
+                        if (!task.isSuccessful()) {
+                            handler.post(() -> Toast.makeText(getApplicationContext(), "Something wrongs", Toast.LENGTH_SHORT).show());
+                        } else {
+                            Intent intent = new Intent();
+                            setResult(RESULT_OK, intent);
+                            finish();
+                        }
+                    });
+                } else {
+                    imageRef.putFile(Uri.fromFile(new File(note.getImagePath())))
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    imageRef.getDownloadUrl().addOnCompleteListener(task1 -> handler.post(() -> {
+                                        if (task1.isSuccessful()) {
+                                            note.setImagePath(task1.getResult().toString());
+
+                                            database.child(User.EmailKey).child("notes").child(KeyNote).setValue(note).addOnCompleteListener(task2 -> {
+                                                if (!task2.isSuccessful()) {
+                                                    handler.post(() -> Toast.makeText(getApplicationContext(), "Something wrongs", Toast.LENGTH_SHORT).show());
+                                                } else {
+                                                    Intent intent = new Intent();
+                                                    setResult(RESULT_OK, intent);
+                                                    finish();
+                                                }
+                                            });
+                                        } else {
+                                            handler.post(() -> Toast.makeText(getApplicationContext(), "Upload image faild", Toast.LENGTH_SHORT).show());
+                                            setLoadingSaveNote(false);
+                                        }
+                                    }));
+                                } else {
+                                    Log.e("loi upload image", task.getException().getMessage()+"");
+                                    setLoadingSaveNote(false);
+                                    handler.post(() -> Toast.makeText(getApplicationContext(), task.getException().getMessage()+"", Toast.LENGTH_SHORT).show());
+                                }
+                            });
+                }
+            } else {
+                if (alreadyAvailableNote != null) {
+                    if (alreadyAvailableNote.getImagePath() != null && !alreadyAvailableNote.getImagePath().equals("")) {
+                        storage.child(path).delete().addOnCompleteListener(task -> handler.post(() -> {
+                            if (!task.isSuccessful()) {
+                                Toast.makeText(getApplicationContext(), "Something wrongs", Toast.LENGTH_SHORT).show();
+                                setLoadingSaveNote(false);
+                            }
+                        }));
+                    }
+                }
+                database.child(User.EmailKey).child("notes").child(KeyNote).setValue(note).addOnCompleteListener(task2 -> handler.post(() -> {
+                    if (!task2.isSuccessful()) {
+                        Toast.makeText(getApplicationContext(), "Something wrongs", Toast.LENGTH_SHORT).show();
+                        setLoadingSaveNote(false);
+                    } else {
+                        Log.e("tai notes", "tu trang create or update");
+                        Intent intent = new Intent();
+                        setResult(RESULT_OK, intent);
+                        finish();
+                    }
+                }));
+            }
         });
     }
 
     private void initMiscellaneous() {
         final LinearLayout layoutMiscellaneous = findViewById(R.id.layoutMiscellaneous);
         final BottomSheetBehavior<LinearLayout> bottomSheetBehavior = BottomSheetBehavior.from(layoutMiscellaneous);
-        layoutMiscellaneous.findViewById(R.id.textMicellaneous).setOnClickListener(view -> {
+        textMicellaneous = layoutMiscellaneous.findViewById(R.id.textMicellaneous);
+        textMicellaneous.setOnClickListener(view -> {
             if (bottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             } else {
@@ -353,14 +421,21 @@ public class CreateNoteActivity extends AppCompatActivity {
             view.findViewById(R.id.textDeleteNote).setOnClickListener(view12 -> {
 
                 Handler handler = new Handler(Looper.getMainLooper());
-                Boolean isWork = SubThread.checkNetworking(getApplicationContext(), () -> {
-                    NotesDatabase.getDatabase(getApplicationContext()).noteDao().deleteNote(alreadyAvailableNote);
-                    handler.post(() -> {
-                        Intent intent = new Intent();
-                        intent.putExtra("isNoteDeleted", true);
-                        setResult(RESULT_OK, intent);
-                        finish();
-                    });
+                SubThread.runSubThread(getApplicationContext(), () -> {
+                    String path = User.EmailKey + "/" + KeyNote + "/image.jpg";
+                    storage.child(path).delete();
+                    database.child(User.EmailKey).child("notes").child(alreadyAvailableNote.getGenkey()).removeValue().addOnCompleteListener(task -> handler.post(() -> {
+                        if (task.isSuccessful()) {
+                            handler.post(() -> {
+                                Intent intent = new Intent();
+                                intent.putExtra("isNoteDeleted", true);
+                                setResult(RESULT_OK, intent);
+                                finish();
+                            });
+                        } else {
+                            Toast.makeText(getApplicationContext(), "co loi xay ra", Toast.LENGTH_SHORT).show();
+                        }
+                    }));
                 });
 
             });
@@ -403,6 +478,34 @@ public class CreateNoteActivity extends AppCompatActivity {
             cursor.close();
         }
         return filePath;
+    }
+
+    private void setLoadingSaveNote(boolean isLoading){
+        runOnUiThread(() -> {
+            if(isLoading){
+                layoutSaveNote.setEnabled(false);
+                loadingSaveNote.setVisibility(View.VISIBLE);
+                imageSave.setEnabled(false);
+                imageBack.setEnabled(false);
+                imageRemoveImage.setEnabled(false);
+                imageRemoveWebURL.setEnabled(false);
+                inputNoteTitle.setEnabled(false);
+                inputNoteSubtitle.setEnabled(false);
+                inputNoteText.setEnabled(false);
+                textMicellaneous.setEnabled(false);
+            }else {
+                layoutSaveNote.setEnabled(true);
+                loadingSaveNote.setVisibility(View.GONE);
+                imageSave.setEnabled(true);
+                imageBack.setEnabled(true);
+                imageRemoveImage.setEnabled(true);
+                imageRemoveWebURL.setEnabled(true);
+                inputNoteTitle.setEnabled(true);
+                inputNoteSubtitle.setEnabled(true);
+                inputNoteText.setEnabled(true);
+                textMicellaneous.setEnabled(true);
+            }
+        });
     }
 
     private void showAddURLDialog() {

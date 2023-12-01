@@ -1,6 +1,6 @@
 package com.example.appnote.adapters;
 
-import android.graphics.BitmapFactory;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -14,6 +14,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.appnote.R;
 import com.example.appnote.entities.Note;
 import com.example.appnote.listeners.NotesListener;
@@ -30,11 +31,13 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
     private NotesListener notesListener;
     private Timer timer;
     private List<Note> notesSource;
+    private Context context;
 
-    public NotesAdapter(List<Note> notes, NotesListener notesListener) {
+    public NotesAdapter(List<Note> notes, Context context, NotesListener notesListener) {
         this.notes = notes;
         this.notesListener = notesListener;
         this.notesSource = notes;
+        this.context = context;
     }
 
     @NonNull
@@ -47,7 +50,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
 
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
-        holder.setNote(notes.get(position));
+        holder.setNote(this.context,notes.get(position));
         holder.layoutNote.setOnClickListener(view -> notesListener.onNoteClicked(notes.get(position), position));
     }
 
@@ -76,11 +79,12 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             imageNote = itemView.findViewById(R.id.imageNote);
         }
 
-        void setNote(Note note) {
+        void setNote(Context context,Note note) {
             textTitle.setText(note.getTitle());
             if (note.getSubtitle().trim().isEmpty()) {
                 textSubtitle.setVisibility(View.GONE);
             } else {
+                textSubtitle.setVisibility(View.VISIBLE);
                 textSubtitle.setText(note.getSubtitle());
             }
             textDateTime.setText(note.getDatetime());
@@ -93,7 +97,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             }
 
             if (note.getImagePath() != null) {
-                imageNote.setImageBitmap(BitmapFactory.decodeFile(note.getImagePath()));
+                Glide.with(context).load(note.getImagePath()).into(imageNote);
                 imageNote.setVisibility(View.VISIBLE);
             } else {
                 imageNote.setVisibility(View.GONE);
@@ -119,12 +123,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                     }
                     notes = temp;
                 }
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        notifyDataSetChanged();
-                    }
-                });
+                new Handler(Looper.getMainLooper()).post(() -> notifyDataSetChanged());
             }
         }, 500);
     }

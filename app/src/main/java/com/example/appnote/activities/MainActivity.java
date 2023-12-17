@@ -43,8 +43,6 @@ import com.example.appnote.threads.SubThread;
 import com.example.appnote.entities.Note;
 import com.example.appnote.entities.User;
 import com.example.appnote.listeners.NotesListener;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
@@ -83,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         auth = FirebaseAuth.getInstance();
+        Toast.makeText(getApplicationContext(),"Xin chao "+ auth.getCurrentUser().getDisplayName(),Toast.LENGTH_SHORT).show();
         setupNav();
         setupCallback();
         loadingListNote = findViewById(R.id.loadingListNote);
@@ -199,6 +198,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         navAdapter = new NavAdapter(this, (position, itemName) -> {
             switch (itemName) {
                 case "Account Info":
+                    startActivity(new Intent(MainActivity.this,AccountInfoActivity.class));
                     break;
                 case "Change Password":
                     changePassword();
@@ -259,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
                                         Toast.makeText(getApplicationContext(),"Update password successfully!",Toast.LENGTH_SHORT).show();
                                     }else {
                                         Toast.makeText(getApplicationContext(),"Update password is wrong!",Toast.LENGTH_SHORT).show();
-                                        Log.e("update password", task1.getException().getMessage());
+                                        Log.e("update password", task1.getException().getMessage() + "");
                                     }
                                 }));
                             }else {
@@ -360,7 +360,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
             });
         } catch (Exception ex) {
-            Log.e("loi comeback", ex.getMessage());
+            Log.e("loi comeback", ex.getMessage()+"");
         }
 
     }

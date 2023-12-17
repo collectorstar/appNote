@@ -461,9 +461,7 @@ public class CreateNoteActivity extends AppCompatActivity {
 
     private void selectImage() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        if (intent.resolveActivity(getPackageManager()) != null) {
-            callbackSelectImg.launch(intent);
-        }
+        callbackSelectImg.launch(intent);
     }
 
     private String getPathFromUri(Uri contentUri) {
@@ -523,10 +521,10 @@ public class CreateNoteActivity extends AppCompatActivity {
                 dialogAddURL.getWindow().setBackgroundDrawable(new ColorDrawable(0));
             }
 
-            final EditText inputURL = view.findViewById(R.id.inputNewPassword);
+            final EditText inputURL = view.findViewById(R.id.inputURL);
             inputURL.requestFocus();
 
-            view.findViewById(R.id.textChange).setOnClickListener(view12 -> {
+            view.findViewById(R.id.textAdd).setOnClickListener(view12 -> {
                 if (inputURL.getText().toString().trim().isEmpty()) {
                     Toast.makeText(CreateNoteActivity.this, "Enter URL", Toast.LENGTH_SHORT).show();
                 } else if (!Patterns.WEB_URL.matcher(inputURL.getText().toString()).matches()) {

@@ -50,6 +50,7 @@ public class LoginActivity extends AppCompatActivity {
         if (currentUser != null) {
             User.Email = currentUser.getEmail();
             User.EmailKey = User.Email.replace(".", "_dot_").replace("@", "_at_");
+            User.Name = currentUser.getDisplayName();
             Intent intent = new Intent(getApplicationContext(), MainActivity.class);
             startActivity(intent);
             finish();

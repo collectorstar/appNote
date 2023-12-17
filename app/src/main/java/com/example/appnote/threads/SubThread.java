@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class SubThread {
-    public static final ExecutorService CreateSubThread =
+    private static final ExecutorService CreateSubThread =
             Executors.newFixedThreadPool(4);
 
     public static boolean runSubThread(Context context, Runnable action){
@@ -18,7 +18,7 @@ public class SubThread {
             SubThread.CreateSubThread.execute(action);
             return true;
         }else {
-            Toast.makeText(context,"Vui long ket noi mang",Toast.LENGTH_SHORT).show();
+            Toast.makeText(context,"Vui long ket noi mang hoặc khởi động lại ứng dụng",Toast.LENGTH_SHORT).show();
             return false;
         }
     }

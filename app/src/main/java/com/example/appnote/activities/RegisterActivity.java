@@ -17,7 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.appnote.R;
-import com.example.appnote.database.SubThread;
+import com.example.appnote.appsettings.Setting;
+import com.example.appnote.threads.SubThread;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -117,7 +118,7 @@ public class RegisterActivity extends AppCompatActivity {
         tvLogin = findViewById(R.id.tvLogin);
         btnRegister = findViewById(R.id.btnRegister);
         auth = FirebaseAuth.getInstance();
-        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl(Setting.LinkDB);
         loadingRegister = findViewById(R.id.loadingRegister);
     }
 

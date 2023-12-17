@@ -1,4 +1,4 @@
-package com.example.appnote.database;
+package com.example.appnote.threads;
 
 import android.content.Context;
 import android.net.ConnectivityManager;

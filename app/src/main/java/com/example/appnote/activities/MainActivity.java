@@ -38,11 +38,17 @@ import android.widget.Toast;
 import com.example.appnote.R;
 import com.example.appnote.adapters.NavAdapter;
 import com.example.appnote.adapters.NotesAdapter;
-import com.example.appnote.database.SubThread;
+import com.example.appnote.appsettings.Setting;
+import com.example.appnote.threads.SubThread;
 import com.example.appnote.entities.Note;
 import com.example.appnote.entities.User;
 import com.example.appnote.listeners.NotesListener;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -50,8 +56,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements NotesListener {
@@ -63,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
     private List<Note> noteList;
     private NotesAdapter notesAdapter;
     private int noteClickedPosition = -1;
-    private AlertDialog dialogAddURL;
+    private AlertDialog dialogAddURL,dialogChangePassword;
     private Toolbar toolbar;
     private DrawerLayout drawerLayout;
     private NavAdapter navAdapter;
@@ -82,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         setupNav();
         setupCallback();
         loadingListNote = findViewById(R.id.loadingListNote);
-        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl(Setting.LinkDB);
 
         ImageView imageAddNoteMain = findViewById(R.id.imageAddNoteMain);
         imageAddNoteMain.setOnClickListener(view -> callbackCreate.launch(new Intent(getApplicationContext(), CreateNoteActivity.class)));
@@ -195,7 +199,9 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         navAdapter = new NavAdapter(this, (position, itemName) -> {
             switch (itemName) {
                 case "Account Info":
+                    break;
                 case "Change Password":
+                    changePassword();
                     break;
                 case "Logout":
                     auth.signOut();
@@ -209,6 +215,77 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
         navsRecyclerView.setAdapter(navAdapter);
     }
 
+    private void changePassword() {
+        if(dialogChangePassword == null){
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            View view = LayoutInflater.from(this).inflate(
+                    R.layout.layout_change_pasword,
+                    findViewById(R.id.layoutChangePasswordContainer)
+            );
+            builder.setView(view);
+
+            dialogChangePassword = builder.create();
+            if (dialogChangePassword.getWindow() != null) {
+                dialogChangePassword.getWindow().setBackgroundDrawable(new ColorDrawable(0));
+            }
+
+            EditText inputNewPassword = view.findViewById(R.id.inputNewPassword);
+            EditText inputOldPassword = view.findViewById(R.id.inputOldPassword);
+            inputNewPassword.requestFocus();
+
+            view.findViewById(R.id.textChange).setOnClickListener(view12 -> {
+                if (inputNewPassword.getText().toString().length() < 6) {
+                    Toast.makeText(getApplicationContext(), "Password must be at least 6 characters", Toast.LENGTH_SHORT).show();
+                    inputNewPassword.setError("Password must be at least 6 characters");
+                    inputNewPassword.requestFocus();
+                } else if (inputNewPassword.getText().toString().contains(" ")) {
+                    Toast.makeText(getApplicationContext(), "Password contains spaces", Toast.LENGTH_SHORT).show();
+                    inputNewPassword.setError("Password contains spaces");
+                    inputNewPassword.requestFocus();
+                }else {
+                    Handler handler = new Handler(Looper.getMainLooper());
+                    SubThread.runSubThread(getApplicationContext(), () -> {
+                        FirebaseUser user = auth.getCurrentUser();
+                        AuthCredential credential = EmailAuthProvider.getCredential(User.Email,inputOldPassword.getText().toString());
+                        user.reauthenticate(credential).addOnCompleteListener(task -> {
+                            if(task.isSuccessful()){
+                                runOnUiThread(() -> {
+                                    dialogChangePassword.dismiss();
+                                    dialogChangePassword = null;
+                                    Toast.makeText(getApplicationContext(),"Request Change Password is sending",Toast.LENGTH_SHORT).show();
+                                });
+                                user.updatePassword(inputNewPassword.getText().toString()).addOnCompleteListener(task1 -> handler.post(() -> {
+                                    if(task1.isSuccessful()){
+                                        Toast.makeText(getApplicationContext(),"Update password successfully!",Toast.LENGTH_SHORT).show();
+                                    }else {
+                                        Toast.makeText(getApplicationContext(),"Update password is wrong!",Toast.LENGTH_SHORT).show();
+                                        Log.e("update password", task1.getException().getMessage());
+                                    }
+                                }));
+                            }else {
+                              runOnUiThread(() -> {
+                                  Toast.makeText(getApplicationContext(),"Old passwrod is not correct!",Toast.LENGTH_SHORT).show();
+                                  inputOldPassword.setError("Old passwrod is not correct!");
+                                  inputOldPassword.requestFocus();
+                              });
+                            }
+                        });
+
+                    });
+                }
+
+            });
+
+            view.findViewById(R.id.textCancel).setOnClickListener(view1 -> {
+                dialogChangePassword.dismiss();
+                dialogChangePassword = null;
+            });
+
+            dialogChangePassword.setOnCancelListener(dialog -> dialogChangePassword = null);
+
+            dialogChangePassword.show();
+        }
+    }
     private void selectImage() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         if (intent.resolveActivity(getPackageManager()) != null) {
@@ -292,11 +369,9 @@ public class MainActivity extends AppCompatActivity implements NotesListener {
 
         runOnUiThread(() -> {
             if (loading) {
-//                notesRecyclerView.setEnabled(false);
                 notesRecyclerView.setVisibility(View.GONE);
                 loadingListNote.setVisibility(View.VISIBLE);
             } else {
-//                notesRecyclerView.setEnabled(true);
                 notesRecyclerView.setVisibility(View.VISIBLE);
                 loadingListNote.setVisibility(View.GONE);
             }

@@ -35,7 +35,8 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.example.appnote.R;
-import com.example.appnote.database.SubThread;
+import com.example.appnote.appsettings.Setting;
+import com.example.appnote.threads.SubThread;
 import com.example.appnote.entities.Note;
 import com.example.appnote.entities.User;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -74,7 +75,7 @@ public class CreateNoteActivity extends AppCompatActivity {
         setContentView(R.layout.activity_create_note);
         setupCallback();
 
-        database = FirebaseDatabase.getInstance().getReferenceFromUrl("https://mynote-4dd35-default-rtdb.firebaseio.com");
+        database = FirebaseDatabase.getInstance().getReferenceFromUrl(Setting.LinkDB);
         storage = FirebaseStorage.getInstance().getReference();
 
         imageBack = findViewById(R.id.imageBack);
@@ -522,10 +523,10 @@ public class CreateNoteActivity extends AppCompatActivity {
                 dialogAddURL.getWindow().setBackgroundDrawable(new ColorDrawable(0));
             }
 
-            final EditText inputURL = view.findViewById(R.id.inputURL);
+            final EditText inputURL = view.findViewById(R.id.inputNewPassword);
             inputURL.requestFocus();
 
-            view.findViewById(R.id.textAdd).setOnClickListener(view12 -> {
+            view.findViewById(R.id.textChange).setOnClickListener(view12 -> {
                 if (inputURL.getText().toString().trim().isEmpty()) {
                     Toast.makeText(CreateNoteActivity.this, "Enter URL", Toast.LENGTH_SHORT).show();
                 } else if (!Patterns.WEB_URL.matcher(inputURL.getText().toString()).matches()) {

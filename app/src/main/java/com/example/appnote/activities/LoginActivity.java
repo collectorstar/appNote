@@ -102,7 +102,9 @@ public class LoginActivity extends AppCompatActivity {
                 String userEmail = emailBox.getText().toString();
 
                 if (TextUtils.isEmpty(userEmail) && !Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
-                    Toast.makeText(LoginActivity.this, "Enter your registered email id", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, "Enter your registered email", Toast.LENGTH_SHORT).show();
+                    emailBox.setError("Enter your registered email");
+                    emailBox.requestFocus();
                     return;
                 }
 
